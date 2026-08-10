@@ -7,7 +7,6 @@ from modelo import (
     treinar_modelo
 )
 
-
 app = Flask(__name__)
 
 
