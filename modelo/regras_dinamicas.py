@@ -1,19 +1,7 @@
-"""
-Motor de regras configuraveis.
-
-Permite que o cliente (ex: SOMPO) defina seus proprios limites
-para variaveis do equipamento (ex: "combustivel < 30%") e gera
-alertas automaticamente quando uma leitura viola algum limite.
-
-Isso e independente da rede neural (RiskNet) - sao regras de
-negocio simples, nao aprendizado de maquina.
-"""
-
 OPERADORES_VALIDOS = ["<", "<=", ">", ">=", "=="]
 
 
 class RegraLimite:
-    """Representa um único limite configurado pelo usuário."""
 
     def __init__(self, id_regra, variavel, operador, limite, mensagem=None):
 
@@ -60,14 +48,6 @@ class RegraLimite:
 
 
 class MotorRegras:
-    """
-    Guarda as regras configuradas e avalia leituras de
-    equipamentos contra elas, gerando alertas.
-
-    OBS: armazenamento em memória (some ao reiniciar o servidor).
-    Para produção, trocar por um banco de dados.
-    """
-
     def __init__(self):
         self.regras = []
         self._proximo_id = 1
@@ -102,13 +82,6 @@ class MotorRegras:
         return [r.to_dict() for r in self.regras]
 
     def avaliar_leitura(self, leitura: dict):
-        """
-        leitura: dict tipo {"combustivel": 25, "temperatura": 90, ...}
-
-        Retorna a lista de alertas disparados (regras violadas).
-        Regras cuja variável não aparece na leitura são ignoradas.
-        """
-
         alertas = []
 
         for regra in self.regras:

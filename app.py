@@ -1,13 +1,16 @@
 from flask import Flask, request, jsonify, render_template
 
 from modelo import (
+    CONFIG,
     calcular_risco,
     classificar_uso,
     gerar_recomendacao,
     treinar_modelo,
+    atualizar_config,
+    avaliar_operacao,
     MotorRegras,
+    HistoricoRisco,
 )
-
 
 app = Flask(__name__)
 
@@ -17,6 +20,10 @@ modelo = treinar_modelo()
 
 # Motor de regras configuráveis (limites definidos pelo cliente)
 motor_regras = MotorRegras()
+
+# Histórico de análises, usado para gerar o relatório de evolução
+historico = HistoricoRisco()
+
 
 @app.route("/")
 def inicio():
@@ -54,15 +61,48 @@ def analisar_risco():
 
     previsao = modelo.predict([[horas]])[0]
 
+    operacao = avaliar_operacao(risco)
+
+    historico.registrar(
+        horas_uso=horas,
+        risco=risco,
+        alto_risco=bool(previsao)
+    )
+
     return jsonify({
         "horas_uso": horas,
         "risco": risco,
         "nivel_uso": nivel,
         "alto_risco": bool(previsao),
-        "recomendacao": recomendacao
+        "recomendacao": recomendacao,
+        "operacao_bloqueada": operacao["operacao_bloqueada"],
+        "modo_operacao": operacao["modo_operacao"]
     })
 
-# Regras configuráveis User Story 3
+
+@app.route("/api/configuracao", methods=["GET"])
+def obter_configuracao():
+
+    return jsonify(CONFIG)
+
+
+@app.route("/api/configuracao", methods=["POST"])
+def definir_configuracao():
+
+
+    dados = request.get_json() or {}
+
+    try:
+        config_atualizada = atualizar_config(
+            limite_alerta=dados.get("limite_alerta"),
+            modo_operacao=dados.get("modo_operacao")
+        )
+
+    except ValueError as e:
+        return jsonify({"erro": str(e)}), 400
+
+    return jsonify(config_atualizada)
+
 
 @app.route("/api/regras", methods=["GET"])
 def listar_regras():
@@ -74,15 +114,6 @@ def listar_regras():
 
 @app.route("/api/regras", methods=["POST"])
 def criar_regra():
-    """
-    Body esperado:
-    {
-        "variavel": "combustivel",
-        "operador": "<",
-        "limite": 30,
-        "mensagem": "Combustível abaixo do limite definido"  (opcional)
-    }
-    """
 
     dados = request.get_json()
 
@@ -118,21 +149,9 @@ def remover_regra(id_regra):
     return jsonify({"removida": True, "id": id_regra})
 
 
+
 @app.route("/api/monitorar", methods=["POST"])
 def monitorar():
-    """
-    Recebe uma leitura do equipamento com quantas variáveis
-    o cliente quiser, ex:
-
-    {
-        "combustivel": 25,
-        "temperatura": 95,
-        "horas_uso": 9
-    }
-
-    Retorna os alertas de regras violadas e, se 'horas_uso'
-    estiver presente, também o score da IA.
-    """
 
     leitura = request.get_json()
 
@@ -157,14 +176,29 @@ def monitorar():
         risco = calcular_risco(horas)
         previsao = modelo.predict([[horas]])[0]
 
+        operacao = avaliar_operacao(risco)
+
+        historico.registrar(
+            horas_uso=horas,
+            risco=risco,
+            alto_risco=bool(previsao)
+        )
+
         resposta["analise_ia"] = {
             "risco": risco,
             "nivel_uso": classificar_uso(horas),
             "alto_risco": bool(previsao),
-            "recomendacao": gerar_recomendacao(risco)
+            "recomendacao": gerar_recomendacao(risco),
+            "operacao_bloqueada": operacao["operacao_bloqueada"],
+            "modo_operacao": operacao["modo_operacao"]
         }
 
     return jsonify(resposta)
+
+
+@app.route("/api/relatorio", methods=["GET"])
+def relatorio():
+    return jsonify(historico.gerar_relatorio())
 
 
 if __name__ == "__main__":
