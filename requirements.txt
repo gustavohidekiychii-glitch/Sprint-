@@ -1,4 +1,6 @@
-Flask
-pandas
-scikit-learn
-matplotlib
+flask==3.0.3
+pandas==2.2.2
+numpy==1.26.4
+scikit-learn==1.5.1
+torch==2.3.1
+pytest==8.2.2
