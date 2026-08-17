@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vortex — Painel de Risco de Equipamentos</title>
+<style>
+  :root {
+    --graphite: #1c2321;
+    --graphite-soft: #262e2b;
+    --field: #3a5a40;
+    --field-light: #588157;
+    --amber: #e0a458;
+    --amber-strong: #d68c3a;
+    --alert-red: #bc4749;
+    --paper: #eef1ee;
+    --paper-dim: #a9b4ad;
+    --mono: 'JetBrains Mono', 'Courier New', monospace;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--graphite);
+    color: var(--paper);
+    font-family: var(--sans);
+    min-height: 100vh;
+  }
+
+  header {
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid #3a443f;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  header .brand {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  header h1 {
+    font-family: var(--mono);
+    font-size: 22px;
+    letter-spacing: 0.04em;
+    margin: 0;
+    color: var(--paper);
+  }
+
+  header h1 span { color: var(--amber); }
+
+  header .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--paper-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+  }
+
+  #status-pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 5px 10px;
+    border-radius: 3px;
+    background: var(--field);
+    color: var(--paper);
+    letter-spacing: 0.08em;
+  }
+
+  main {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 32px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+
+  @media (max-width: 860px) {
+    main { grid-template-columns: 1fr; padding: 20px; }
+  }
+
+  .panel {
+    background: var(--graphite-soft);
+    border: 1px solid #3a443f;
+    border-radius: 6px;
+    padding: 22px;
+  }
+
+  .panel h2 {
+    font-family: var(--mono);
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--field-light);
+    margin: 0 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .panel h2::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--field-light);
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  label {
+    display: block;
+    font-size: 12px;
+    color: var(--paper-dim);
+    margin: 12px 0 4px;
+  }
+
+  input, select {
+    width: 100%;
+    background: var(--graphite);
+    border: 1px solid #47524c;
+    color: var(--paper);
+    padding: 9px 10px;
+    border-radius: 4px;
+    font-family: var(--sans);
+    font-size: 14px;
+  }
+
+  input:focus, select:focus {
+    outline: none;
+    border-color: var(--amber);
+  }
+
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+
+  button {
+    margin-top: 16px;
+    background: var(--field);
+    color: var(--paper);
+    border: none;
+    padding: 10px 16px;
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  button:hover { background: var(--field-light); }
+
+  button.secondary {
+    background: transparent;
+    border: 1px solid var(--amber);
+    color: var(--amber);
+  }
+
+  button.secondary:hover { background: rgba(224, 164, 88, 0.1); }
+
+  .regra-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #33403a;
+    font-size: 13px;
+  }
+
+  .regra-item:last-child { border-bottom: none; }
+
+  .regra-item .desc { font-family: var(--mono); color: var(--paper); }
+  .regra-item .desc .var { color: var(--amber); }
+
+  .regra-item button.del {
+    background: transparent;
+    border: none;
+    color: var(--alert-red);
+    cursor: pointer;
+    font-size: 16px;
+    margin: 0;
+    padding: 0 6px;
+  }
+
+  #lista-regras:empty::after,
+  #lista-regras.vazio::after {
+    content: 'Nenhum limite configurado ainda.';
+    color: var(--paper-dim);
+    font-size: 13px;
+    font-style: italic;
+  }
+
+  .full-width { grid-column: 1 / -1; }
+
+  #resultado {
+    margin-top: 18px;
+  }
+
+  .alerta-card {
+    background: rgba(188, 71, 73, 0.12);
+    border: 1px solid var(--alert-red);
+    border-radius: 5px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+    font-size: 13px;
+  }
+
+  .alerta-card .titulo {
+    font-family: var(--mono);
+    color: var(--alert-red);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .ok-card {
+    background: rgba(88, 129, 87, 0.15);
+    border: 1px solid var(--field-light);
+    border-radius: 5px;
+    padding: 12px 14px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--field-light);
+  }
+
+  .ia-card {
+    margin-top: 12px;
+    background: var(--graphite);
+    border: 1px dashed #47524c;
+    border-radius: 5px;
+    padding: 12px 14px;
+    font-family: var(--mono);
+    font-size: 13px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+
+  .ia-card .label { color: var(--paper-dim); }
+  .ia-card .valor { color: var(--amber); }
+
+  #campos-leitura {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .campo-leitura-row {
+    display: flex;
+    gap: 6px;
+    grid-column: 1 / -1;
+  }
+
+  .campo-leitura-row input { flex: 1; }
+
+  .campo-leitura-row button {
+    margin: 0;
+    padding: 0 10px;
+    background: transparent;
+    border: 1px solid var(--alert-red);
+    color: var(--alert-red);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <h1>VORTEX<span>.</span></h1>
+    <span class="tag">Monitoramento de risco &middot; SOMPO</span>
+  </div>
+  <span id="status-pill">verificando...</span>
+</header>
+
+<main>
+
+  <section class="panel">
+    <h2>Configurar limite</h2>
+    <p style="font-size:12px; color:var(--paper-dim); margin-top:-8px;">
+      Defina um limite para qualquer variável do equipamento. Ex.: combustível abaixo de 30%.
+    </p>
+
+    <label for="variavel">Variável</label>
+    <input id="variavel" type="text" placeholder="ex: combustivel">
+
+    <div class="row">
+      <div>
+        <label for="operador">Condição de alerta</label>
+        <select id="operador">
+          <option value="<">menor que</option>
+          <option value="<=">menor ou igual a</option>
+          <option value=">">maior que</option>
+          <option value=">=">maior ou igual a</option>
+          <option value="==">igual a</option>
+        </select>
+      </div>
+      <div>
+        <label for="limite">Valor limite</label>
+        <input id="limite" type="number" placeholder="ex: 30">
+      </div>
+    </div>
+
+    <label for="mensagem">Mensagem do alerta (opcional)</label>
+    <input id="mensagem" type="text" placeholder="ex: Combustível abaixo do limite">
+
+    <button onclick="criarRegra()">Adicionar limite</button>
+  </section>
+
+  <section class="panel">
+    <h2>Limites ativos</h2>
+    <div id="lista-regras" class="vazio"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Política de operação</h2>
+    <p style="font-size:12px; color:var(--paper-dim); margin-top:-8px;">
+      Defina o limite geral de risco (score da IA) e o que acontece quando ele é atingido.
+    </p>
+
+    <label for="cfg-limite">Limite de risco para alerta</label>
+    <input id="cfg-limite" type="number" placeholder="ex: 70">
+
+    <label for="cfg-modo">Modo de operação</label>
+    <select id="cfg-modo">
+      <option value="alerta">Alerta — apenas notifica o operador</option>
+      <option value="bloqueio">Bloqueio — impede a operação em risco alto</option>
+    </select>
+
+    <button onclick="salvarConfiguracao()">Salvar configuração</button>
+    <div id="cfg-status" style="margin-top:12px; font-family:var(--mono); font-size:12px; color:var(--paper-dim);"></div>
+  </section>
+
+  <section class="panel full-width">
+    <h2>Relatório de evolução do risco</h2>
+    <p style="font-size:12px; color:var(--paper-dim); margin-top:-8px;">
+      Estatísticas calculadas a partir de todas as análises já feitas nesta sessão.
+    </p>
+
+    <button class="secondary" type="button" onclick="carregarRelatorio()">Atualizar relatório</button>
+
+    <div id="relatorio-resumo" class="ia-card" style="margin-top:14px; grid-template-columns: repeat(4, 1fr);"></div>
+    <div id="relatorio-lista" style="margin-top:14px; max-height:220px; overflow-y:auto;"></div>
+  </section>
+
+  <section class="panel full-width">
+    <h2>Simular leitura do equipamento</h2>
+    <p style="font-size:12px; color:var(--paper-dim); margin-top:-8px;">
+      Informe os valores atuais do equipamento para checar contra os limites configurados.
+      Inclua <span style="color:var(--amber)">horas_uso</span> para também rodar a análise da IA.
+    </p>
+
+    <div id="campos-leitura"></div>
+    <button class="secondary" type="button" onclick="adicionarCampoLeitura()">+ variável</button>
+    <button onclick="monitorar()">Verificar</button>
+
+    <div id="resultado"></div>
+  </section>
+
+</main>
+
+<script>
+  const API = '';
+
+  async function verificarStatus() {
+    try {
+      const res = await fetch(`${API}/api/status`);
+      const data = await res.json();
+      const pill = document.getElementById('status-pill');
+      pill.textContent = data.status === 'online' ? 'sistema online' : 'offline';
+    } catch (e) {
+      document.getElementById('status-pill').textContent = 'offline';
+      document.getElementById('status-pill').style.background = 'var(--alert-red)';
+    }
+  }
+
+  async function carregarRegras() {
+    const res = await fetch(`${API}/api/regras`);
+    const data = await res.json();
+    const lista = document.getElementById('lista-regras');
+    lista.innerHTML = '';
+
+    if (data.regras.length === 0) {
+      lista.classList.add('vazio');
+      return;
+    }
+    lista.classList.remove('vazio');
+
+    data.regras.forEach(regra => {
+      const item = document.createElement('div');
+      item.className = 'regra-item';
+      item.innerHTML = `
+        <span class="desc"><span class="var">${regra.variavel}</span> ${regra.operador} ${regra.limite}</span>
+        <button class="del" onclick="removerRegra(${regra.id})">&times;</button>
+      `;
+      lista.appendChild(item);
+    });
+  }
+
+  async function criarRegra() {
+    const variavel = document.getElementById('variavel').value.trim();
+    const operador = document.getElementById('operador').value;
+    const limite = parseFloat(document.getElementById('limite').value);
+    const mensagem = document.getElementById('mensagem').value.trim();
+
+    if (!variavel || isNaN(limite)) {
+      alert('Preencha a variável e o valor limite.');
+      return;
+    }
+
+    await fetch(`${API}/api/regras`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ variavel, operador, limite, mensagem: mensagem || undefined })
+    });
+
+    document.getElementById('variavel').value = '';
+    document.getElementById('limite').value = '';
+    document.getElementById('mensagem').value = '';
+
+    carregarRegras();
+    sincronizarCamposComRegras();
+  }
+
+  async function removerRegra(id) {
+    await fetch(`${API}/api/regras/${id}`, { method: 'DELETE' });
+    carregarRegras();
+  }
+
+  function adicionarCampoLeitura(nomePreenchido) {
+    const container = document.getElementById('campos-leitura');
+    const row = document.createElement('div');
+    row.className = 'campo-leitura-row';
+    row.innerHTML = `
+      <input type="text" class="nome-var" placeholder="variável (ex: combustivel)" value="${nomePreenchido || ''}">
+      <input type="number" class="valor-var" placeholder="valor">
+      <button type="button" onclick="this.parentElement.remove()">&times;</button>
+    `;
+    container.appendChild(row);
+  }
+
+  async function sincronizarCamposComRegras() {
+    // Garante que exista pelo menos um campo por variável já configurada
+    const res = await fetch(`${API}/api/regras`);
+    const data = await res.json();
+    const container = document.getElementById('campos-leitura');
+
+    if (container.children.length === 0) {
+      const variaveis = [...new Set(data.regras.map(r => r.variavel))];
+      if (variaveis.length === 0) {
+        adicionarCampoLeitura();
+        adicionarCampoLeitura('horas_uso');
+      } else {
+        variaveis.forEach(v => adicionarCampoLeitura(v));
+      }
+    }
+  }
+
+  async function monitorar() {
+    const linhas = document.querySelectorAll('.campo-leitura-row');
+    const leitura = {};
+
+    linhas.forEach(linha => {
+      const nome = linha.querySelector('.nome-var').value.trim();
+      const valor = parseFloat(linha.querySelector('.valor-var').value);
+      if (nome && !isNaN(valor)) leitura[nome] = valor;
+    });
+
+    if (Object.keys(leitura).length === 0) {
+      alert('Informe ao menos uma variável com valor.');
+      return;
+    }
+
+    const res = await fetch(`${API}/api/monitorar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(leitura)
+    });
+
+    const data = await res.json();
+    renderizarResultado(data);
+  }
+
+  function renderizarResultado(data) {
+    const container = document.getElementById('resultado');
+    container.innerHTML = '';
+
+    if (data.alertas.length === 0) {
+      const ok = document.createElement('div');
+      ok.className = 'ok-card';
+      ok.textContent = '✓ Nenhum limite violado nesta leitura.';
+      container.appendChild(ok);
+    } else {
+      data.alertas.forEach(alerta => {
+        const card = document.createElement('div');
+        card.className = 'alerta-card';
+        card.innerHTML = `
+          <div class="titulo">⚠ ${alerta.mensagem}</div>
+          <div>${alerta.variavel} = ${alerta.valor_recebido} (limite: ${alerta.operador} ${alerta.limite})</div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    if (data.analise_ia) {
+      const ia = data.analise_ia;
+
+      if (ia.operacao_bloqueada) {
+        const bloqueio = document.createElement('div');
+        bloqueio.className = 'alerta-card';
+        bloqueio.style.background = 'rgba(188, 71, 73, 0.25)';
+        bloqueio.innerHTML = `<div class="titulo">⛔ Operação bloqueada</div><div>Risco acima do limite configurado em modo bloqueio.</div>`;
+        container.appendChild(bloqueio);
+      }
+
+      const card = document.createElement('div');
+      card.className = 'ia-card';
+      card.innerHTML = `
+        <div class="label">Risco (IA)</div><div class="valor">${ia.risco}%</div>
+        <div class="label">Nível de uso</div><div class="valor">${ia.nivel_uso}</div>
+        <div class="label">Alto risco</div><div class="valor">${ia.alto_risco ? 'sim' : 'não'}</div>
+        <div class="label">Recomendação</div><div class="valor">${ia.recomendacao}</div>
+      `;
+      container.appendChild(card);
+
+      carregarRelatorio();
+    }
+  }
+
+  async function carregarConfiguracao() {
+    const res = await fetch(`${API}/api/configuracao`);
+    const data = await res.json();
+    document.getElementById('cfg-limite').value = data.limite_alerta;
+    document.getElementById('cfg-modo').value = data.modo_operacao;
+  }
+
+  async function salvarConfiguracao() {
+    const limite_alerta = parseFloat(document.getElementById('cfg-limite').value);
+    const modo_operacao = document.getElementById('cfg-modo').value;
+    const status = document.getElementById('cfg-status');
+
+    const res = await fetch(`${API}/api/configuracao`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limite_alerta, modo_operacao })
+    });
+
+    if (res.ok) {
+      status.textContent = '✓ Configuração salva.';
+      status.style.color = 'var(--field-light)';
+    } else {
+      const err = await res.json();
+      status.textContent = `✗ ${err.erro}`;
+      status.style.color = 'var(--alert-red)';
+    }
+  }
+
+  async function carregarRelatorio() {
+    const res = await fetch(`${API}/api/relatorio`);
+    const data = await res.json();
+
+    const resumo = document.getElementById('relatorio-resumo');
+    resumo.innerHTML = `
+      <div class="label">Registros</div><div class="valor">${data.total_registros}</div>
+      <div class="label">Risco médio</div><div class="valor">${data.media_risco ?? '—'}</div>
+      <div class="label">Risco máx / mín</div><div class="valor">${data.maximo_risco ?? '—'} / ${data.minimo_risco ?? '—'}</div>
+      <div class="label">Tendência</div><div class="valor">${data.tendencia}</div>
+    `;
+
+    const lista = document.getElementById('relatorio-lista');
+    lista.innerHTML = '';
+
+    data.evolucao.slice().reverse().forEach(reg => {
+      const linha = document.createElement('div');
+      linha.className = 'regra-item';
+      const hora = new Date(reg.timestamp).toLocaleTimeString('pt-BR');
+      linha.innerHTML = `
+        <span class="desc">${hora} — horas_uso=${reg.horas_uso}</span>
+        <span style="font-family:var(--mono); color:${reg.alto_risco ? 'var(--alert-red)' : 'var(--field-light)'}">
+          risco ${reg.risco}%
+        </span>
+      `;
+      lista.appendChild(linha);
+    });
+  }
+
+  verificarStatus();
+  carregarRegras().then(sincronizarCamposComRegras);
+  carregarConfiguracao();
+  carregarRelatorio();
+</script>
+
+</body>
+</html>
