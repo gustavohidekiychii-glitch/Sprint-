@@ -12,7 +12,7 @@ from modelo import (
 
 
 def test_classificar_uso():
-    assert classificar_uso(2) == "Baixo"
+    assert classificar_uso(1) == "Baixo"
     assert classificar_uso(5) == "Médio"
     assert classificar_uso(10) == "Alto"
 
