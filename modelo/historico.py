@@ -1,6 +1,13 @@
-#OBS: Por enquanto, só utiliza
-#armazenamento em memória (histórico é perdido ao reiniciar o servidor). Para uso real, trocar por um banco de dados.
+"""
+Histórico e relatório de evolução do risco.
 
+Atende a User Story "Relatórios de risco e evolução": guarda cada
+análise feita pelo sistema e gera estatísticas (média, máximo,
+mínimo) e a tendência de risco ao longo do tempo.
+
+OBS: armazenamento em memória (histórico é perdido ao reiniciar o
+servidor). Para uso real, trocar por um banco de dados.
+"""
 
 from datetime import datetime, timezone
 

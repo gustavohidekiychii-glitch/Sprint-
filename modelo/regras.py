@@ -10,11 +10,6 @@ def classificar_uso(horas):
         return "Alto"
 
 
-def calcular_risco(horas):
-
-    return min(horas * 10, 100)
-
-
 def gerar_recomendacao(risco):
 
     if risco >= 90:

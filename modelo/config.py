@@ -1,4 +1,8 @@
 MODOS_VALIDOS = ["alerta", "bloqueio"]
+
+# Configuração operacional do sistema. É mutável em tempo de
+# execução via API (/api/configuracao), atendendo a User Story
+# "Configuração de limites e políticas".
 CONFIG = {
     "limite_alerta": 70,
     "modo_operacao": "alerta"  # "alerta": só notifica | "bloqueio": impede a operação
@@ -28,6 +32,10 @@ def atualizar_config(limite_alerta=None, modo_operacao=None):
 
 
 def avaliar_operacao(risco):
+    """
+    Decide, com base na CONFIG atual, se a operação deve ser
+    bloqueada ou apenas alertada para um determinado risco.
+    """
 
     risco_alto = risco >= CONFIG["limite_alerta"]
 
