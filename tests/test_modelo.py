@@ -1,6 +1,5 @@
 from modelo import (
     classificar_uso,
-    calcular_risco,
     gerar_recomendacao,
     gerar_dataset,
     ModeloRisco,
@@ -12,15 +11,9 @@ from modelo import (
 
 
 def test_classificar_uso():
-    assert classificar_uso(1) == "Baixo"
+    assert classificar_uso(2) == "Baixo"
     assert classificar_uso(5) == "Médio"
     assert classificar_uso(10) == "Alto"
-
-
-def test_calcular_risco():
-    assert calcular_risco(1) == 10
-    assert calcular_risco(12) == 100  # limitado em 100
-    assert calcular_risco(15) == 100
 
 
 def test_gerar_recomendacao():
@@ -32,20 +25,29 @@ def test_gerar_recomendacao():
 
 def test_gerar_dataset_colunas():
     df = gerar_dataset(n=20)
-    assert list(df.columns) == ["horas_uso", "risco", "alto_risco"]
+    assert list(df.columns) == [
+        "horas_uso", "temperatura", "vibracao",
+        "carga_equipamento", "risco", "alto_risco"
+    ]
     assert len(df) == 20
+    # combustível não faz parte do cálculo de risco (indicação da SOMPO:
+    # o painel do próprio equipamento já mostra isso)
+    assert "combustivel" not in df.columns
 
 
 def test_modelo_risco_fit_predict():
     df = gerar_dataset(n=100)
-    X = df[["horas_uso"]].values
-    y = df["alto_risco"].values
+    X = df[["horas_uso", "temperatura", "vibracao", "carga_equipamento"]].values
+    y = df["risco"].values  # alvo contínuo (0-100), não mais 0/1
 
-    modelo = ModeloRisco(epocas=50)
+    modelo = ModeloRisco(epocas=100)
     modelo.fit(X, y)
 
+    riscos = modelo.predict_risco(X)
+    assert len(riscos) == len(y)
+    assert all(0 <= r <= 100 for r in riscos)
+
     previsoes = modelo.predict(X)
-    assert len(previsoes) == len(y)
     assert set(previsoes.tolist()).issubset({0, 1})
 
 

@@ -6,8 +6,8 @@
   --cinza-claro: #a3a3a3;
   --branco: #ffffff;
   --off-white: #f2f2f2;
-  --mono: 'Space Mono', 'Courier New', monospace;
-  --sans: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono: 'JetBrains Mono', 'Courier New', monospace;
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -32,8 +32,13 @@ header {
 
 header .brand {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 12px;
+}
+
+header .marca {
+  color: var(--branco);
+  flex-shrink: 0;
 }
 
 header h1 {
@@ -102,13 +107,9 @@ main {
   gap: 8px;
 }
 
-.panel h2::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  background: var(--branco);
-  border-radius: 50%;
-  display: inline-block;
+.panel h2 svg {
+  flex-shrink: 0;
+  opacity: 0.85;
 }
 
 .panel .descricao {

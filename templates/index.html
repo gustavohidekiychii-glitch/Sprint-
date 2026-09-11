@@ -4,15 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vortex — Painel de Risco de Equipamentos</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
 
 <header>
   <div class="brand">
+    <svg class="marca" viewBox="0 0 24 24" width="34" height="34" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+      <path d="M4 16a8 8 0 0 1 16 0" stroke-linecap="round"/>
+      <line x1="12" y1="16" x2="16.2" y2="9.8" stroke-linecap="round"/>
+      <circle cx="12" cy="16" r="1.4" fill="currentColor" stroke="none"/>
+      <path d="M2 16h1.6M20.4 16H22" stroke-linecap="round"/>
+    </svg>
     <h1>VORTEX<span>.</span></h1>
     <span class="tag">Monitoramento de risco &middot; SOMPO</span>
   </div>
@@ -22,7 +25,7 @@
 <main>
 
   <section class="panel">
-    <h2>Configurar limite</h2>
+    <h2><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><line x1="4" y1="7" x2="20" y2="7"/><circle cx="9" cy="7" r="2.1"/><line x1="4" y1="17" x2="20" y2="17"/><circle cx="16" cy="17" r="2.1"/></svg>Configurar limite</h2>
     <p class="descricao">
       Defina um limite para qualquer variável do equipamento. Ex.: combustível abaixo de 30%.
     </p>
@@ -54,12 +57,12 @@
   </section>
 
   <section class="panel">
-    <h2>Limites ativos</h2>
+    <h2><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><line x1="8" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="20" y2="12"/><line x1="8" y1="18" x2="20" y2="18"/><circle cx="4" cy="6" r="1.2" fill="currentColor" stroke="none"/><circle cx="4" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="4" cy="18" r="1.2" fill="currentColor" stroke="none"/></svg>Limites ativos</h2>
     <div id="lista-regras" class="vazio"></div>
   </section>
 
   <section class="panel">
-    <h2>Política de operação</h2>
+    <h2><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z"/></svg>Política de operação</h2>
     <p class="descricao">
       Defina o limite geral de risco (score da IA) e o que acontece quando ele é atingido.
     </p>
@@ -78,7 +81,7 @@
   </section>
 
   <section class="panel full-width">
-    <h2>Relatório de evolução do risco</h2>
+    <h2><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4,17 10,10 14,13 20,6"/><polyline points="14,6 20,6 20,12"/></svg>Relatório de evolução do risco</h2>
     <p class="descricao">
       Estatísticas calculadas a partir de todas as análises já feitas nesta sessão.
     </p>
@@ -90,14 +93,40 @@
   </section>
 
   <section class="panel full-width">
-    <h2>Simular leitura do equipamento</h2>
+    <h2><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 16a8 8 0 0 1 16 0"/><line x1="12" y1="16" x2="16" y2="10"/><circle cx="12" cy="16" r="1.2" fill="currentColor" stroke="none"/></svg>Simular leitura do equipamento</h2>
     <p class="descricao">
-      Informe os valores atuais do equipamento para checar contra os limites configurados.
-      Inclua <strong>horas_uso</strong> para também rodar a análise da IA.
+      A IA calcula o risco com base nessas 4 variáveis — ajuste os valores
+      e clique em Verificar. Combustível não entra aqui: o painel do
+      próprio equipamento já mostra isso, então não faz parte do cálculo.
     </p>
 
+    <div class="row">
+      <div>
+        <label for="leitura-horas">Horas de uso</label>
+        <input id="leitura-horas" type="number" value="4" step="0.5" min="0">
+      </div>
+      <div>
+        <label for="leitura-temp">Temperatura (°C)</label>
+        <input id="leitura-temp" type="number" value="25" step="1">
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="leitura-vibracao">Vibração (0-100)</label>
+        <input id="leitura-vibracao" type="number" value="0" min="0" max="100">
+      </div>
+      <div>
+        <label for="leitura-carga">Carga do equipamento (0-100%)</label>
+        <input id="leitura-carga" type="number" value="50" min="0" max="100">
+      </div>
+    </div>
+
+    <label class="descricao" style="margin-top:16px;">
+      Outras variáveis pra checar contra as regras configuradas acima (opcional)
+    </label>
     <div id="campos-leitura"></div>
-    <button class="secondary" type="button" onclick="adicionarCampoLeitura()">+ variável</button>
+    <button class="secondary" type="button" onclick="adicionarCampoLeitura()">+ outra variável</button>
     <button onclick="monitorar()">Verificar</button>
 
     <div id="resultado"></div>

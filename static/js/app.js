@@ -78,37 +78,42 @@ function adicionarCampoLeitura(nomePreenchido) {
   container.appendChild(row);
 }
 
+// Essas 4 já têm campo fixo no formulário — não duplicar como "extra"
+const VARIAVEIS_FIXAS = ['horas_uso', 'temperatura', 'vibracao', 'carga_equipamento'];
+
 async function sincronizarCamposComRegras() {
-  // Garante que exista pelo menos um campo por variável já configurada
+  // Garante que exista um campo extra por variável de regra que não
+  // seja uma das 4 já fixas no formulário (ex: combustivel, pressao...)
   const res = await fetch(`${API}/api/regras`);
   const data = await res.json();
   const container = document.getElementById('campos-leitura');
 
   if (container.children.length === 0) {
-    const variaveis = [...new Set(data.regras.map(r => r.variavel))];
-    if (variaveis.length === 0) {
-      adicionarCampoLeitura();
-      adicionarCampoLeitura('horas_uso');
-    } else {
-      variaveis.forEach(v => adicionarCampoLeitura(v));
-    }
+    const variaveis = [...new Set(data.regras.map(r => r.variavel))]
+      .filter(v => !VARIAVEIS_FIXAS.includes(v));
+
+    variaveis.forEach(v => adicionarCampoLeitura(v));
   }
 }
 
 async function monitorar() {
-  const linhas = document.querySelectorAll('.campo-leitura-row');
-  const leitura = {};
+  const leitura = {
+    horas_uso: parseFloat(document.getElementById('leitura-horas').value),
+    temperatura: parseFloat(document.getElementById('leitura-temp').value),
+    vibracao: parseFloat(document.getElementById('leitura-vibracao').value),
+    carga_equipamento: parseFloat(document.getElementById('leitura-carga').value),
+  };
 
-  linhas.forEach(linha => {
+  if (Object.values(leitura).some(v => isNaN(v))) {
+    alert('Preencha as 4 variáveis principais (horas de uso, temperatura, vibração e carga).');
+    return;
+  }
+
+  document.querySelectorAll('.campo-leitura-row').forEach(linha => {
     const nome = linha.querySelector('.nome-var').value.trim();
     const valor = parseFloat(linha.querySelector('.valor-var').value);
     if (nome && !isNaN(valor)) leitura[nome] = valor;
   });
-
-  if (Object.keys(leitura).length === 0) {
-    alert('Informe ao menos uma variável com valor.');
-    return;
-  }
 
   const res = await fetch(`${API}/api/monitorar`, {
     method: 'POST',
