@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vortex — Bem-vindo</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="pagina-boas-vindas">
+
+<main class="boas-vindas">
+
+  <section class="boas-vindas-conteudo">
+    <img class="boas-vindas-logo" src="{{ url_for('static', filename='images/logo.png') }}" alt="Símbolo Vortex">
+
+    <h1 class="boas-vindas-titulo">Bem-vindo ao VORTEX<span>.</span></h1>
+    <p class="boas-vindas-subtitulo">Monitoramento de risco de equipamentos &middot; SOMPO</p>
+
+    <p class="boas-vindas-texto">
+      O Vortex monitora o risco de equipamentos agrícolas em operação,
+      combinando uma inteligência artificial (rede neural) com limites
+      configuráveis definidos pelo próprio cliente. O sistema gera
+      alertas preventivos, permite escolher entre apenas notificar ou
+      bloquear a operação em risco alto, e acompanha a evolução do
+      risco ao longo do tempo.
+    </p>
+
+    <div class="boas-vindas-destaques">
+      <div><strong>IA de risco</strong><span>rede neural treinada em PyTorch</span></div>
+      <div><strong>Limites configuráveis</strong><span>regras definidas pelo cliente</span></div>
+      <div><strong>Relatório de evolução</strong><span>histórico e tendência do risco</span></div>
+    </div>
+  </section>
+
+  <section class="boas-vindas-login">
+    <h2>Entrar</h2>
+    <p class="descricao">Acesso de demonstração — não é necessário preencher.</p>
+
+    <label for="login-usuario">Usuário</label>
+    <input id="login-usuario" type="text" placeholder="operador@sompo.com">
+
+    <label for="login-senha">Senha</label>
+    <input id="login-senha" type="password" placeholder="••••••••">
+
+    <a class="boas-vindas-botao" href="{{ url_for('inicio') }}">Entrar no sistema</a>
+  </section>
+
+</main>
+
+</body>
+</html>
