@@ -1,58 +1,109 @@
+/*
+  VORTEX FIELD UNIT — versão Wokwi (simulação)
+  -----------------------------------------------
+  Versão simplificada do firmware físico, pensada pra rodar no
+  simulador Wokwi (wokwi.com) em vez de num ESP32 de verdade.
+
+  O que mudou em relação à versão física:
+  - Removidos o HC-SR04 (nível/combustível) e o piezo (vibração) —
+    nenhum dos dois entra mais no cálculo de risco da IA (o site já
+    não usa mais essas variáveis). Simplifica bastante o circuito.
+  - "Distância percorrida" (uma das 4 variáveis que a IA usa) não tem
+    um sensor físico simples que meça isso direto (normalmente viria
+    de GPS/odômetro). Pra simular, uso um SEGUNDO potenciômetro — você
+    gira o botão e o valor muda, representando essa variável.
+
+  Variáveis enviadas pra IA (mesmas 4 do site): horas_uso, temperatura,
+  distancia_percorrida, carga_equipamento.
+
+  IMPORTANTE sobre o WiFi no Wokwi: o simulador tem uma rede própria,
+  chamada "Wokwi-GUEST" (sem senha), com acesso real à internet. Só
+  que ela NÃO enxerga o seu computador — então, rodando local (python
+  app.py na sua máquina), o ESP32 simulado não vai conseguir conversar
+  com a API. Isso é normal e não é um bug: o simulador roda na nuvem
+  da Wokwi, não na sua rede local. Se quiser testar a integração de
+  verdade, seria preciso expor sua API com uma ferramenta tipo ngrok
+  (te explico se quiser). Sem isso, o firmware ainda funciona sozinho
+  — sensores, cálculo de risco local, LEDs, servo e relé continuam
+  funcionando normalmente, só a sincronização com o servidor que falha
+  (e o código já foi feito pra lidar bem com isso).
+
+  Bibliotecas necessárias (Arduino IDE > Sketch > Include Library > Manage Libraries):
+  - DHT sensor library (Adafruit)
+  - Adafruit Unified Sensor
+  - ESP32Servo
+  - ArduinoJson (versão 7.x)
+
+  No Wokwi, use a aba "Library Manager" do editor pra adicionar as
+  mesmas bibliotecas antes de rodar a simulação.
+*/
+
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <DHT.h>
 #include <ESP32Servo.h>
 
-//CONFIGURAÇÃO — AJUSTE ANTES DE FAZER O UPLOAD
-const char* WIFI_SSID  = "NOME_DA_SUA_REDE";
-const char* WIFI_SENHA = "SENHA_DA_SUA_REDE";
+// ===================================                                    ==================
+// CONFIGURAÇÃO
+// =====================================================
 
-// IP da máquina rodando "python app.py", na mesma rede WiFi do ESP32.
-// Descubra com "ipconfig" (Windows) -> IPv4 da rede WiFi.
-const char* API_HOST = "http://:5000";
+// Rede própria do simulador Wokwi — não precisa trocar.
+const char* WIFI_SSID  = "Wokwi-GUEST";
+const char* WIFI_SENHA = "";
 
+// Só funciona se você expuser sua API publicamente (ex: ngrok).
+// Rodando 100% local, deixe como está — o firmware roda sozinho.
+const char* API_HOST = "http://192.168.0.100:5000";
 
-const float DISTANCIA_VAZIO = 20.0;  // cm, sensor até o fundo (vazio)
-const float DISTANCIA_CHEIO = 3.0;   // cm, sensor até a água (cheio)
-#define PINO_DHT           4
-#define PINO_TRIG          5
-#define PINO_ECHO          18
-#define PINO_POTENCIOMETRO 34
-#define PINO_PIEZO         35
-#define PINO_BOTAO         32
-#define PINO_RELE          33
-#define PINO_SERVO         25
-#define PINO_LED_VERDE     26
-#define PINO_LED_AMARELO   27
-#define PINO_LED_VERMELHO  13
-#define PINO_BUZZER        19
+// =====================================================
+// PINOS
+// =====================================================
+
+#define PINO_DHT            4
+#define PINO_POT_CARGA      34
+#define PINO_POT_DISTANCIA  35
+#define PINO_BOTAO          32
+#define PINO_RELE           33
+#define PINO_SERVO          25
+#define PINO_LED_VERDE      26
+#define PINO_LED_AMARELO    27
+#define PINO_LED_VERMELHO   13
+#define PINO_BUZZER         19
+
 #define DHTTIPO DHT22
+
 DHT dht(PINO_DHT, DHTTIPO);
 Servo servoRisco;
 
+// =====================================================
+// ESTADO DO SISTEMA
+// =====================================================
 
-//ESTADO DO SISTEMA
 bool operacaoAtiva = false;
 unsigned long inicioOperacao = 0;
 float horasUsoAcumuladas = 0;   // 1 minuto real = 1 "hora" simulada
+
 float limiteAlertaServidor = 70;
 String modoOperacaoServidor = "alerta";
+
 unsigned long ultimaSincronizacao = 0;
 const unsigned long INTERVALO_SINCRONIZACAO = 15000; // 15s
+
 unsigned long ultimoEnvio = 0;
 const unsigned long INTERVALO_ENVIO = 10000; // 10s
+
 unsigned long ultimoDebounce = 0;
 int estadoBotaoAnterior = HIGH;
 
+// =====================================================
+// SETUP
+// =====================================================
 
-//Setup
 void setup() {
 
   Serial.begin(115200);
 
-  pinMode(PINO_TRIG, OUTPUT);
-  pinMode(PINO_ECHO, INPUT);
   pinMode(PINO_BOTAO, INPUT_PULLUP);
   pinMode(PINO_RELE, OUTPUT);
   pinMode(PINO_LED_VERDE, OUTPUT);
@@ -61,7 +112,6 @@ void setup() {
   pinMode(PINO_BUZZER, OUTPUT);
 
   // A maioria dos módulos de relé baratos é "ativo em LOW".
-  // HIGH aqui = relé desligado (bomba sem energia).
   digitalWrite(PINO_RELE, HIGH);
 
   dht.begin();
@@ -71,10 +121,13 @@ void setup() {
 
   conectarWiFi();
 
-  Serial.println("Vortex Field Unit iniciado.");
+  Serial.println("Vortex Field Unit (Wokwi) iniciado.");
 }
 
-//// LOOP PRINCIPAL
+// =====================================================
+// LOOP PRINCIPAL
+// =====================================================
+
 void loop() {
 
   atualizarBotao();
@@ -90,15 +143,14 @@ void loop() {
   if (isnan(temperatura)) temperatura = 25; // fallback se o sensor falhar
   if (isnan(umidade)) umidade = 50;
 
-  float nivelReservatorio = lerNivelReservatorio();
-  int vibracao = analogRead(PINO_PIEZO);
-  int cargaEquipamento = map(analogRead(PINO_POTENCIOMETRO), 0, 4095, 0, 100);
+  float distanciaPercorrida = map(analogRead(PINO_POT_DISTANCIA), 0, 4095, 0, 100);
+  float cargaEquipamento = map(analogRead(PINO_POT_CARGA), 0, 4095, 0, 100);
 
   float risco = calcularRiscoLocal(
     horasUsoAcumuladas,
     temperatura,
-    nivelReservatorio,
-    vibracao
+    distanciaPercorrida,
+    cargaEquipamento
   );
 
   if (millis() - ultimaSincronizacao > INTERVALO_SINCRONIZACAO) {
@@ -110,25 +162,26 @@ void loop() {
     risco >= limiteAlertaServidor &&
     modoOperacaoServidor == "bloqueio"
   );
+
   atualizarAtuadores(risco, bloqueado);
+
   if (millis() - ultimoEnvio > INTERVALO_ENVIO) {
 
     enviarLeituraParaServidor(
       horasUsoAcumuladas,
-      nivelReservatorio,
       temperatura,
-      umidade,
-      vibracao,
+      distanciaPercorrida,
       cargaEquipamento
     );
+
     ultimoEnvio = millis();
   }
+
   imprimirStatus(
     risco,
     temperatura,
     umidade,
-    nivelReservatorio,
-    vibracao,
+    distanciaPercorrida,
     cargaEquipamento,
     bloqueado
   );
@@ -136,7 +189,10 @@ void loop() {
   delay(300);
 }
 
+// =====================================================
 // WiFi
+// =====================================================
+
 void conectarWiFi() {
 
   Serial.print("Conectando ao WiFi");
@@ -157,33 +213,14 @@ void conectarWiFi() {
   }
 }
 
-//Sensor de nível do reservatório (combustível e água)
-float lerNivelReservatorio() {
+// =====================================================
+// Botão de start/stop da operação (com debounce simples)
+// =====================================================
 
-  digitalWrite(PINO_TRIG, LOW);
-  delayMicroseconds(2);
-  digitalWrite(PINO_TRIG, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(PINO_TRIG, LOW);
-
-  long duracao = pulseIn(PINO_ECHO, HIGH, 30000); // timeout de 30ms
-
-  if (duracao == 0) return -1; // sensor não respondeu
-
-  float distanciaCm = duracao * 0.0343 / 2.0;
-
-  float nivel = (DISTANCIA_VAZIO - distanciaCm) /
-                (DISTANCIA_VAZIO - DISTANCIA_CHEIO) * 100.0;
-
-  nivel = constrain(nivel, 0, 100);
-
-  return nivel;
-}
-
-//Botão de ligar/desligar a operação
 void atualizarBotao() {
 
   int leitura = digitalRead(PINO_BOTAO);
+
   if (leitura != estadoBotaoAnterior) {
     ultimoDebounce = millis();
   }
@@ -206,33 +243,42 @@ void atualizarBotao() {
   estadoBotaoAnterior = leitura;
 }
 
-// Risco local — failsafe, funciona mesmo sem o servidor
-float calcularRiscoLocal(float horas, float temperatura, float nivelReservatorio, int vibracao) {
+// =====================================================
+// Risco local — a MESMA fórmula usada pra rotular o dataset
+// de treino da IA no site (ver modelo/dataset.py, _risco_ponderado)
+// =====================================================
+
+float calcularRiscoLocal(float horas, float temperatura, float distancia, float carga) {
 
   float riscoHoras = min(horas * 10.0, 100.0);
 
-  float riscoTemp = 0;
-  if (temperatura > 35) {
-    riscoTemp = (temperatura - 35) * (100.0 / 25.0); // 35C=0 ... 60C=100
-  }
+  // Temperatura é perigosa nos dois sentidos: frio extremo OU calor
+  // extremo. Faixa "normal" considerada: 15°C a 35°C.
+  const float FAIXA_MIN = 15.0;
+  const float FAIXA_MAX = 35.0;
 
-  float riscoNivel = 0;
-  if (nivelReservatorio >= 0 && nivelReservatorio < 20) {
-    riscoNivel = (20 - nivelReservatorio) * 5;
-  }
+  float foraDaFaixa = 0;
+  if (FAIXA_MIN - temperatura > foraDaFaixa) foraDaFaixa = FAIXA_MIN - temperatura;
+  if (temperatura - FAIXA_MAX > foraDaFaixa) foraDaFaixa = temperatura - FAIXA_MAX;
 
-  float riscoVibracao = (vibracao > 1000) ? 40 : 0;
+  float riscoTemp = min(foraDaFaixa * (100.0 / 40.0), 100.0);
+
+  float riscoDistancia = constrain(distancia, 0, 100);
+  float riscoCarga = constrain(carga, 0, 100);
 
   float riscoTotal =
-    (riscoHoras    * 0.40) +
-    (riscoTemp     * 0.25) +
-    (riscoNivel    * 0.25) +
-    (riscoVibracao * 0.10);
+    (riscoHoras     * 0.40) +
+    (riscoTemp      * 0.30) +
+    (riscoDistancia * 0.15) +
+    (riscoCarga     * 0.15);
 
   return constrain(riscoTotal, 0, 100);
 }
 
+// =====================================================
 // Atuadores: LEDs, buzzer, servo e relé
+// =====================================================
+
 void atualizarAtuadores(float risco, bool bloqueado) {
 
   digitalWrite(PINO_LED_VERDE,    risco < 50);
@@ -246,11 +292,14 @@ void atualizarAtuadores(float risco, bool bloqueado) {
     tone(PINO_BUZZER, 1000, 200);
   }
 
-  // Ajuste para LOW/HIGH conforme o seu módulo de relé específico.
   digitalWrite(PINO_RELE, bloqueado ? LOW : HIGH);
 }
 
-// Comunicação com a API (Flask)
+// =====================================================
+// Comunicação com a API Vortex (Flask) — só funciona se a
+// API estiver acessível pela internet (ver nota no topo do arquivo)
+// =====================================================
+
 void sincronizarConfiguracao() {
 
   if (WiFi.status() != WL_CONNECTED) return;
@@ -284,11 +333,9 @@ void sincronizarConfiguracao() {
 
 void enviarLeituraParaServidor(
   float horas,
-  float nivel,
   float temperatura,
-  float umidade,
-  int vibracao,
-  int carga
+  float distancia,
+  float carga
 ) {
 
   if (WiFi.status() != WL_CONNECTED) return;
@@ -299,10 +346,8 @@ void enviarLeituraParaServidor(
 
   JsonDocument doc;
   doc["horas_uso"] = horas;
-  doc["combustivel"] = nivel;
   doc["temperatura"] = temperatura;
-  doc["umidade"] = umidade;
-  doc["vibracao"] = vibracao;
+  doc["distancia_percorrida"] = distancia;
   doc["carga_equipamento"] = carga;
 
   String corpo;
@@ -319,23 +364,26 @@ void enviarLeituraParaServidor(
   http.end();
 }
 
+// =====================================================
 // Debug no Serial Monitor
+// =====================================================
+
 void imprimirStatus(
   float risco,
   float temperatura,
   float umidade,
-  float nivel,
-  int vibracao,
-  int carga,
+  float distancia,
+  float carga,
   bool bloqueado
 ) {
+
+  Serial.println("----------------------------------------");
   Serial.println("Operacao ativa: " + String(operacaoAtiva ? "sim" : "nao"));
   Serial.println("Horas de uso:   " + String(horasUsoAcumuladas, 2));
   Serial.println("Temperatura:    " + String(temperatura) + " C");
   Serial.println("Umidade:        " + String(umidade) + " %");
-  Serial.println("Reservatorio:   " + String(nivel) + " %");
-  Serial.println("Vibracao (raw): " + String(vibracao));
-  Serial.println("Carga (pot):    " + String(carga) + " %");
+  Serial.println("Distancia:      " + String(distancia) + " km");
+  Serial.println("Carga:          " + String(carga) + " %");
   Serial.println("Risco:          " + String(risco, 1) + "%");
   Serial.println("Modo servidor:  " + modoOperacaoServidor + " (limite " + String(limiteAlertaServidor) + ")");
   Serial.println("Bloqueado:      " + String(bloqueado ? "SIM" : "nao"));

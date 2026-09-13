@@ -13,7 +13,7 @@ class RiskNet(nn.Module):
     """
     Rede neural simples (Multilayer Perceptron) que prevê o risco do
     equipamento (0 a 100) a partir de 4 variáveis: horas_uso,
-    temperatura, vibracao e carga_equipamento.
+    temperatura, distancia_percorrida e carga_equipamento.
     """
 
     def __init__(self, entrada=4, oculta=16):
@@ -103,7 +103,7 @@ def treinar_modelo(caminho="data/dataset.csv"):
 
     df = carregar_dataset(caminho)
 
-    X = df[["horas_uso", "temperatura", "vibracao", "carga_equipamento"]].values
+    X = df[["horas_uso", "temperatura", "distancia_percorrida", "carga_equipamento"]].values
     y = df["risco"].values
 
     X_train, X_test, y_train, y_test = train_test_split(

@@ -1,0 +1,80 @@
+{
+  "version": 1,
+  "author": "Vortex - FIAP",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "wokwi-esp32-devkit-v1", "id": "esp32", "top": 0, "left": 0, "attrs": {} },
+
+    { "type": "wokwi-dht22", "id": "dht22", "top": -140, "left": -260, "attrs": {} },
+
+    { "type": "wokwi-potentiometer", "id": "pot_carga", "top": 80, "left": -320, "attrs": {} },
+    { "type": "wokwi-potentiometer", "id": "pot_distancia", "top": 80, "left": -180, "attrs": {} },
+
+    { "type": "wokwi-pushbutton", "id": "botao", "top": 220, "left": -260, "attrs": { "color": "blue" } },
+
+    { "type": "wokwi-led", "id": "led_verde", "top": -180, "left": 260, "attrs": { "color": "green" } },
+    { "type": "wokwi-resistor", "id": "r_verde", "top": -180, "left": 320, "attrs": { "value": "220" } },
+
+    { "type": "wokwi-led", "id": "led_amarelo", "top": -100, "left": 260, "attrs": { "color": "yellow" } },
+    { "type": "wokwi-resistor", "id": "r_amarelo", "top": -100, "left": 320, "attrs": { "value": "220" } },
+
+    { "type": "wokwi-led", "id": "led_vermelho", "top": -20, "left": 260, "attrs": { "color": "red" } },
+    { "type": "wokwi-resistor", "id": "r_vermelho", "top": -20, "left": 320, "attrs": { "value": "220" } },
+
+    { "type": "wokwi-servo", "id": "servo", "top": 60, "left": 260, "attrs": {} },
+
+    { "type": "wokwi-buzzer", "id": "buzzer", "top": 160, "left": 260, "attrs": { "volume": "0.2" } },
+
+    { "type": "wokwi-relay-module", "id": "rele", "top": 260, "left": 60, "attrs": {} },
+
+    { "type": "wokwi-led", "id": "led_bomba", "top": 260, "left": 260, "attrs": { "color": "blue" } },
+    { "type": "wokwi-resistor", "id": "r_bomba", "top": 260, "left": 320, "attrs": { "value": "220" } }
+  ],
+
+  "connections": [
+    ["esp32:D4", "dht22:SDA", "black", []],
+    ["dht22:VCC", "esp32:3V3", "red", []],
+    ["dht22:GND", "esp32:GND.1", "black", []],
+
+    ["pot_carga:SIG", "esp32:D34", "green", []],
+    ["pot_carga:VCC", "esp32:3V3", "red", []],
+    ["pot_carga:GND", "esp32:GND.1", "black", []],
+
+    ["pot_distancia:SIG", "esp32:D35", "green", []],
+    ["pot_distancia:VCC", "esp32:3V3", "red", []],
+    ["pot_distancia:GND", "esp32:GND.1", "black", []],
+
+    ["botao:1.l", "esp32:D32", "green", []],
+    ["botao:2.r", "esp32:GND.1", "black", []],
+
+    ["led_verde:A", "r_verde:1", "green", []],
+    ["r_verde:2", "esp32:D26", "green", []],
+    ["led_verde:C", "esp32:GND.1", "black", []],
+
+    ["led_amarelo:A", "r_amarelo:1", "yellow", []],
+    ["r_amarelo:2", "esp32:D27", "yellow", []],
+    ["led_amarelo:C", "esp32:GND.1", "black", []],
+
+    ["led_vermelho:A", "r_vermelho:1", "red", []],
+    ["r_vermelho:2", "esp32:D13", "red", []],
+    ["led_vermelho:C", "esp32:GND.1", "black", []],
+
+    ["servo:PWM", "esp32:D25", "green", []],
+    ["servo:V+", "esp32:5V", "red", []],
+    ["servo:GND", "esp32:GND.1", "black", []],
+
+    ["buzzer:1", "esp32:D19", "green", []],
+    ["buzzer:2", "esp32:GND.1", "black", []],
+
+    ["rele:VCC", "esp32:5V", "red", []],
+    ["rele:GND", "esp32:GND.1", "black", []],
+    ["rele:IN", "esp32:D33", "green", []],
+
+    ["rele:COM", "esp32:5V", "red", []],
+    ["rele:NC", "r_bomba:1", "blue", []],
+    ["r_bomba:2", "led_bomba:A", "blue", []],
+    ["led_bomba:C", "esp32:GND.1", "black", []]
+  ],
+
+  "dependencies": {}
+}

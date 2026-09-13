@@ -7,6 +7,7 @@ from modelo import (
     HistoricoRisco,
     atualizar_config,
     avaliar_operacao,
+    validar_leitura,
 )
 
 
@@ -26,7 +27,7 @@ def test_gerar_recomendacao():
 def test_gerar_dataset_colunas():
     df = gerar_dataset(n=20)
     assert list(df.columns) == [
-        "horas_uso", "temperatura", "vibracao",
+        "horas_uso", "temperatura", "distancia_percorrida",
         "carga_equipamento", "risco", "alto_risco"
     ]
     assert len(df) == 20
@@ -37,7 +38,7 @@ def test_gerar_dataset_colunas():
 
 def test_modelo_risco_fit_predict():
     df = gerar_dataset(n=100)
-    X = df[["horas_uso", "temperatura", "vibracao", "carga_equipamento"]].values
+    X = df[["horas_uso", "temperatura", "distancia_percorrida", "carga_equipamento"]].values
     y = df["risco"].values  # alvo contínuo (0-100), não mais 0/1
 
     modelo = ModeloRisco(epocas=100)
@@ -105,3 +106,24 @@ def test_atualizar_config_modo_invalido():
         assert False, "deveria ter levantado ValueError"
     except ValueError:
         pass
+
+
+def test_validar_leitura_rejeita_valor_impossivel():
+    # -1000°C é fisicamente impossível — deve ser rejeitado, não calculado
+    try:
+        validar_leitura(temperatura=-1000)
+        assert False, "deveria ter levantado ValueError"
+    except ValueError:
+        pass
+
+
+def test_validar_leitura_aceita_valores_normais():
+    # não deve levantar erro nenhum
+    validar_leitura(horas_uso=8, temperatura=30, distancia_percorrida=40, carga_equipamento=60)
+
+
+def test_validar_variavel_ignora_nome_desconhecido():
+    # variáveis de regras customizadas (sem limite físico conhecido)
+    # não devem ser bloqueadas por este módulo
+    from modelo.validacao import validar_variavel
+    validar_variavel("pressao_pneu", 9999)  # não deve levantar erro

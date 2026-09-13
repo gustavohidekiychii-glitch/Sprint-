@@ -5,7 +5,7 @@ import pandas as pd
 from .config import CONFIG
 
 
-def _risco_ponderado(horas, temperatura, vibracao, carga):
+def _risco_ponderado(horas, temperatura, distancia_percorrida, carga):
     """
     Combina várias variáveis do equipamento num único score de risco
     (0-100), usado só pra ROTULAR o dataset de treino da IA — ou seja,
@@ -14,23 +14,28 @@ def _risco_ponderado(horas, temperatura, vibracao, carga):
     calcula o risco de verdade é a IA (RiskNet), não essa fórmula.
 
     Pesos: horas de uso pesa mais (é o principal indicador de desgaste),
-    seguido de temperatura, depois vibração e carga.
+    seguido de temperatura, depois distância percorrida e carga.
     """
 
     risco_horas = min(horas * 10, 100)
 
-    # Abaixo de 30°C consideramos operação normal; acima disso, o risco
-    # cresce até 70°C (que já representa risco máximo).
-    risco_temp = max(0, min((temperatura - 30) * (100 / 40), 100))
+    # Temperatura é perigosa nos DOIS sentidos: tanto superaquecimento
+    # quanto frio extremo. Definimos uma faixa "normal" (15°C a 35°C)
+    # onde o risco de temperatura é 0; fora dela, o risco cresce em
+    # qualquer direção, até saturar em 100 a 40°C de distância da faixa.
+    FAIXA_MIN, FAIXA_MAX = 15, 35
+    fora_da_faixa = max(0, FAIXA_MIN - temperatura, temperatura - FAIXA_MAX)
+    risco_temp = min(fora_da_faixa * (100 / 40), 100)
 
-    # vibração e carga já vêm numa escala de 0 a 100.
-    risco_vibracao = max(0, min(vibracao, 100))
+    # distância percorrida e carga já vêm numa escala de 0 a 100
+    # (distância em km rodados no período, carga em % da capacidade).
+    risco_distancia = max(0, min(distancia_percorrida, 100))
     risco_carga = max(0, min(carga, 100))
 
     risco_total = (
         risco_horas * 0.40 +
         risco_temp * 0.30 +
-        risco_vibracao * 0.15 +
+        risco_distancia * 0.15 +
         risco_carga * 0.15
     )
 
@@ -44,11 +49,11 @@ def gerar_dataset(n=200):
     for _ in range(n):
 
         horas = random.randint(1, 12)
-        temperatura = round(random.uniform(20, 70), 1)
-        vibracao = round(random.uniform(0, 100), 1)
+        temperatura = round(random.uniform(-20, 80), 1)
+        distancia_percorrida = round(random.uniform(0, 100), 1)
         carga = round(random.uniform(0, 100), 1)
 
-        risco = _risco_ponderado(horas, temperatura, vibracao, carga)
+        risco = _risco_ponderado(horas, temperatura, distancia_percorrida, carga)
 
         alto_risco = (
             1 if risco >= CONFIG["limite_alerta"] else 0
@@ -57,7 +62,7 @@ def gerar_dataset(n=200):
         dados.append({
             "horas_uso": horas,
             "temperatura": temperatura,
-            "vibracao": vibracao,
+            "distancia_percorrida": distancia_percorrida,
             "carga_equipamento": carga,
             "risco": risco,
             "alto_risco": alto_risco
@@ -75,7 +80,7 @@ def carregar_dataset(caminho="data/dataset.csv"):
         colunas = [
             "horas_uso",
             "temperatura",
-            "vibracao",
+            "distancia_percorrida",
             "carga_equipamento",
             "risco",
             "alto_risco"

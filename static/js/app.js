@@ -79,7 +79,7 @@ function adicionarCampoLeitura(nomePreenchido) {
 }
 
 // Essas 4 já têm campo fixo no formulário — não duplicar como "extra"
-const VARIAVEIS_FIXAS = ['horas_uso', 'temperatura', 'vibracao', 'carga_equipamento'];
+const VARIAVEIS_FIXAS = ['horas_uso', 'temperatura', 'distancia_percorrida', 'carga_equipamento'];
 
 async function sincronizarCamposComRegras() {
   // Garante que exista um campo extra por variável de regra que não
@@ -100,12 +100,12 @@ async function monitorar() {
   const leitura = {
     horas_uso: parseFloat(document.getElementById('leitura-horas').value),
     temperatura: parseFloat(document.getElementById('leitura-temp').value),
-    vibracao: parseFloat(document.getElementById('leitura-vibracao').value),
+    distancia_percorrida: parseFloat(document.getElementById('leitura-distancia').value),
     carga_equipamento: parseFloat(document.getElementById('leitura-carga').value),
   };
 
   if (Object.values(leitura).some(v => isNaN(v))) {
-    alert('Preencha as 4 variáveis principais (horas de uso, temperatura, vibração e carga).');
+    alert('Preencha as 4 variáveis principais (horas de uso, temperatura, distância percorrida e carga).');
     return;
   }
 
@@ -120,6 +120,13 @@ async function monitorar() {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(leitura)
   });
+
+  if (!res.ok) {
+    const erro = await res.json();
+    const container = document.getElementById('resultado');
+    container.innerHTML = `<div class="alerta-card"><div class="titulo">✗ Valor inválido</div><div>${erro.erro}</div></div>`;
+    return;
+  }
 
   const data = await res.json();
   renderizarResultado(data);
