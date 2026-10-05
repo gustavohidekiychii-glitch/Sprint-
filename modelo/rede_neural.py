@@ -1,98 +1,87 @@
 import numpy as np
-import torch
-import torch.nn as nn
 
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import mean_absolute_error
+from sklearn.neural_network import MLPRegressor
 
 from .dataset import carregar_dataset
 
 
-class RiskNet(nn.Module):
+class RiskNet:
     """
-    Rede neural simples (Multilayer Perceptron) que prevê o risco do
-    equipamento (0 a 100) a partir de 4 variáveis: horas_uso,
-    temperatura, distancia_percorrida e carga_equipamento.
+    Rede neural simples para prever o risco do equipamento
+    de 0 a 100.
+
+    A implementação usa o MLPRegressor do scikit-learn,
+    evitando a dependência pesada do PyTorch.
     """
 
     def __init__(self, entrada=4, oculta=16):
-        super().__init__()
-
-        self.rede = nn.Sequential(
-            nn.Linear(entrada, oculta),
-            nn.ReLU(),
-            nn.Linear(oculta, oculta),
-            nn.ReLU(),
-            nn.Linear(oculta, 1)
+        self.rede = MLPRegressor(
+            hidden_layer_sizes=(oculta, oculta),
+            activation="relu",
+            solver="adam",
+            learning_rate_init=0.01,
+            max_iter=300,
+            random_state=42
         )
 
-    def forward(self, x):
-        return self.rede(x)
+    def fit(self, X, y):
+        self.rede.fit(X, y)
+        return self
+
+    def predict(self, X):
+        return self.rede.predict(X)
 
 
 class ModeloRisco:
     """
-    Wrapper em torno da RiskNet. Diferente de um classificador
-    (que só diz "é alto risco: sim/não"), esse modelo faz REGRESSÃO —
-    prevê diretamente um valor contínuo de risco entre 0 e 100, o que
-    dá uma resposta graduada em vez de um "tudo ou nada".
+    Modelo de rede neural responsável por prever
+    um valor contínuo de risco entre 0 e 100.
     """
 
     def __init__(self, epocas=300, lr=0.01):
         self.epocas = epocas
         self.lr = lr
+
         self.scaler = StandardScaler()
+
         self.rede = RiskNet()
 
     def fit(self, X, y_risco):
         """
-        y_risco: valores contínuos de 0 a 100 (não é mais 0/1).
+        Treina a rede neural utilizando os dados
+        de risco do dataset.
         """
 
         X_np = self.scaler.fit_transform(X)
 
-        # normaliza o alvo de 0-100 para 0-1, pra combinar com a
-        # sigmoid da saída da rede
-        y_np = (np.array(y_risco, dtype="float32") / 100.0).reshape(-1, 1)
+        y_np = np.array(y_risco, dtype="float32")
 
-        X_tensor = torch.tensor(X_np, dtype=torch.float32)
-        y_tensor = torch.tensor(y_np, dtype=torch.float32)
-
-        criterio = nn.MSELoss()
-        otimizador = torch.optim.Adam(
-            self.rede.parameters(), lr=self.lr
-        )
-
-        self.rede.train()
-
-        for _ in range(self.epocas):
-
-            otimizador.zero_grad()
-
-            saida = torch.sigmoid(self.rede(X_tensor))
-            perda = criterio(saida, y_tensor)
-
-            perda.backward()
-            otimizador.step()
+        self.rede.fit(X_np, y_np)
 
         return self
 
     def predict_risco(self, X):
-        """Retorna o risco previsto (0 a 100) para cada linha de X."""
+        """
+        Retorna o risco previsto entre 0 e 100.
+        """
 
         X_np = self.scaler.transform(X)
-        X_tensor = torch.tensor(X_np, dtype=torch.float32)
 
-        self.rede.eval()
+        previsoes = self.rede.predict(X_np)
 
-        with torch.no_grad():
-            saida = torch.sigmoid(self.rede(X_tensor))
+        # Garante que o risco nunca fique abaixo de 0
+        # ou acima de 100.
+        previsoes = np.clip(previsoes, 0, 100)
 
-        return saida.numpy().flatten() * 100
+        return previsoes
 
     def predict(self, X):
-        """Atalho: 1 se o risco previsto for >= 50, senão 0."""
+        """
+        Retorna 1 para risco alto e 0 para risco baixo.
+        """
 
         riscos = self.predict_risco(X)
 
@@ -103,7 +92,15 @@ def treinar_modelo(caminho="data/dataset.csv"):
 
     df = carregar_dataset(caminho)
 
-    X = df[["horas_uso", "temperatura", "distancia_percorrida", "carga_equipamento"]].values
+    X = df[
+        [
+            "horas_uso",
+            "temperatura",
+            "distancia_percorrida",
+            "carga_equipamento"
+        ]
+    ].values
+
     y = df["risco"].values
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -113,14 +110,23 @@ def treinar_modelo(caminho="data/dataset.csv"):
         random_state=42
     )
 
-    modelo = ModeloRisco(epocas=300, lr=0.01)
+    modelo = ModeloRisco(
+        epocas=300,
+        lr=0.01
+    )
 
     modelo.fit(X_train, y_train)
 
     previsoes = modelo.predict_risco(X_test)
 
-    erro_medio = mean_absolute_error(y_test, previsoes)
+    erro_medio = mean_absolute_error(
+        y_test,
+        previsoes
+    )
 
-    print(f"Erro médio do risco previsto: {erro_medio:.1f} pontos (de 0 a 100)")
+    print(
+        f"Erro médio do risco previsto: "
+        f"{erro_medio:.1f} pontos (de 0 a 100)"
+    )
 
     return modelo
