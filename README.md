@@ -44,7 +44,7 @@ pytest
 ## Tecnologias usadas
 
 - **Flask** — API e servidor web
-- **PyTorch** — rede neural que calcula o risco
+- **scikit-learn** — rede neural MLPRegressor que calcula o risco
 - **Pandas / scikit-learn** — preparação dos dados de treino
 - **HTML/CSS/JS puro** — painel de configuração e monitoramento
 ==================================================================================================================================
