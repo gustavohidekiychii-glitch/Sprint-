@@ -104,3 +104,29 @@ const float DISTANCIA_CHEIO = 3.0;   // cm, sensor até a água (cheio)
 3. Abra o Serial Monitor (115200 baud) e confira se aparece "WiFi conectado".
 4. No painel web (`http://localhost:5000`), mude o modo de operação para
    `bloqueio` e force um risco alto — o relé deve desligar a bomba.
+
+
+## Aplicação de Machine Learning com Streamlit
+
+O projeto também possui uma interface independente em Streamlit para demonstrar a análise de risco com a rede neural.
+
+### Executar localmente
+
+```bash
+pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
+
+O Streamlit abrirá a aplicação no navegador. Informe horas de uso, temperatura, distância percorrida e carga do equipamento para obter o score de risco e uma explicação dos principais fatores por análise de sensibilidade local.
+
+### Publicar no Streamlit Community Cloud
+
+1. Acesse https://share.streamlit.io/ e entre com sua conta.
+2. Escolha **Create app**.
+3. Selecione o repositório `gustavohidekiychii-glitch/Sprint-` e a branch `main`.
+4. Informe `streamlit_app.py` como arquivo principal.
+5. Clique em **Deploy**.
+
+O arquivo `requirements.txt` na raiz inclui as dependências necessárias.
+
+**Limitação importante:** a base atual é sintética/de demonstração. O modelo aprende a reproduzir um score gerado por regras ponderadas; ele ainda não foi validado para prever sinistros reais. A explicação dos drivers compara cada entrada com a mediana da base de treinamento e representa sensibilidade local, não causalidade.
