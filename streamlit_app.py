@@ -66,7 +66,7 @@ def carregar_modelo():
 
     # Referências usadas na explicação: medianas calculadas somente
     # na parte de treinamento da base.
-    referencias = pd.Series(X_treino, columns=FEATURES).median()
+    referencias = pd.DataFrame(X_treino, columns=FEATURES).median()
 
     return modelo, df, mae, referencias
 
