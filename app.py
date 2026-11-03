@@ -29,7 +29,6 @@ historico = HistoricoRisco()
 # painel do próprio equipamento já mostra isso, então não faz parte
 # do cálculo de risco da IA.
 PADRAO_TEMPERATURA = 25
-PADRAO_VIBRACAO = 0
 PADRAO_CARGA = 50
 
 
@@ -42,7 +41,6 @@ def analisar_com_ia(horas, temperatura=None, distancia=None, carga=None):
     """
 
     temperatura = PADRAO_TEMPERATURA if temperatura is None else temperatura
-    vibracao = PADRAO_VIBRACAO if vibracao is None else vibracao
     carga = PADRAO_CARGA if carga is None else carga
 
     distancia = 0 if distancia is None else distancia
@@ -102,7 +100,7 @@ def status():
 def analisar_risco():
     """
     Analisa o risco do equipamento com a IA. 'horas_uso' é
-    obrigatório; 'temperatura', 'vibracao' e 'carga_equipamento' são
+    obrigatório; 'temperatura', 'distancia_percorrida' e 'carga_equipamento' são
     opcionais (assumem um valor padrão quando não informados).
     """
 
