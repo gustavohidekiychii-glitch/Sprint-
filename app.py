@@ -33,7 +33,7 @@ PADRAO_VIBRACAO = 0
 PADRAO_CARGA = 50
 
 
-def analisar_com_ia(horas, temperatura=None, vibracao=None, carga=None):
+def analisar_com_ia(horas, temperatura=None, distancia=None, carga=None):
     """
     Roda a IA (rede neural) com as 4 variáveis do equipamento e monta
     o resultado padrão usado tanto em /api/risco quanto em /api/monitorar.
@@ -45,7 +45,8 @@ def analisar_com_ia(horas, temperatura=None, vibracao=None, carga=None):
     vibracao = PADRAO_VIBRACAO if vibracao is None else vibracao
     carga = PADRAO_CARGA if carga is None else carga
 
-    entrada = [[horas, temperatura, vibracao, carga]]
+    distancia = 0 if distancia is None else distancia
+    entrada = [[horas, temperatura, distancia, carga]]
 
     risco = round(float(modelo.predict_risco(entrada)[0]), 1)
 
@@ -65,7 +66,7 @@ def analisar_com_ia(horas, temperatura=None, vibracao=None, carga=None):
     return {
         "horas_uso": horas,
         "temperatura": temperatura,
-        "vibracao": vibracao,
+        "distancia_percorrida": distancia,
         "carga_equipamento": carga,
         "risco": risco,
         "nivel_uso": classificar_uso(horas),
@@ -116,7 +117,7 @@ def analisar_risco():
     resultado = analisar_com_ia(
         horas=dados["horas_uso"],
         temperatura=dados.get("temperatura"),
-        vibracao=dados.get("vibracao"),
+        distancia=dados.get("distancia_percorrida"),
         carga=dados.get("carga_equipamento")
     )
 
@@ -256,7 +257,7 @@ def monitorar():
         resposta["analise_ia"] = analisar_com_ia(
             horas=leitura["horas_uso"],
             temperatura=leitura.get("temperatura"),
-            vibracao=leitura.get("vibracao"),
+            distancia=leitura.get("distancia_percorrida"),
             carga=leitura.get("carga_equipamento")
         )
 
